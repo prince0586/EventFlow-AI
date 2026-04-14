@@ -15,7 +15,7 @@ import {
 import { auth, signIn, signOut, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, where, onSnapshot, addDoc, getDocs } from 'firebase/firestore';
-import { getVenueGuidance } from './services/geminiService';
+// import { getVenueGuidance } from './services/geminiService'; // Removed client-side Gemini call
 
 // --- Components ---
 
@@ -265,10 +265,25 @@ const AIConcierge = ({ user }: { user: User | null }) => {
     setInput('');
     setLoading(true);
 
-    const guidance = await getVenueGuidance(input, { venue: 'Stadium 01', user: user?.displayName }, tools_execution_map);
-    const aiMsg = { role: 'model', content: guidance, timestamp: new Date().toISOString() };
-    setMessages(prev => [...prev, aiMsg]);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: input, 
+          context: { venue: 'Stadium 01', user: user?.displayName },
+          userId: user?.uid 
+        })
+      });
+      const data = await res.json();
+      const aiMsg = { role: 'model', content: data.text || data.error, timestamp: new Date().toISOString() };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (err: any) {
+      console.error(err);
+      setMessages(prev => [...prev, { role: 'model', content: "Error connecting to AI service.", timestamp: new Date().toISOString() }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
