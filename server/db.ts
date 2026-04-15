@@ -1,5 +1,12 @@
+/**
+ * Firestore Database Service (Server-side)
+ * 
+ * Handles the initialization of the Firebase Admin SDK and provides access to the
+ * Firestore database instance. It automatically detects the configuration from
+ * firebase-applet-config.json.
+ */
 import admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,8 +33,10 @@ if (fs.existsSync(firebaseConfigPath)) {
 
 /**
  * Helper to get the Firestore instance with the correct database ID.
+ * 
+ * @returns The Firestore database instance or null if the SDK is not initialized.
  */
-export const getFirestoreDB = () => {
+export const getFirestoreDB = (): Firestore | null => {
   if (!admin.apps.length) return null;
   const app = admin.app();
   return firestoreDatabaseId ? getFirestore(app, firestoreDatabaseId) : getFirestore(app);

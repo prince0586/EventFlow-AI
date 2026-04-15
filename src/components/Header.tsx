@@ -7,6 +7,14 @@ interface HeaderProps {
   user: User | null;
 }
 
+/**
+ * Header Component
+ * 
+ * The primary navigation and branding bar of the application.
+ * Handles user authentication display and sign-in/out actions.
+ * 
+ * @component
+ */
 export const Header = React.memo(({ user }: HeaderProps) => (
   <header className="bg-surface border-bottom border-border px-10 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm" role="banner">
     <div className="flex items-center gap-3">

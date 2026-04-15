@@ -6,26 +6,43 @@ interface CrowdRoutingProps {
   onRouteCalculated?: (route: any) => void;
 }
 
+/**
+ * CrowdRouting Component
+ * 
+ * Provides an interface for calculating the most efficient route through the venue.
+ * Uses real-time congestion data and user preferences (e.g., mobility-first).
+ * 
+ * @component
+ */
 export const CrowdRouting = React.memo(({ onRouteCalculated }: CrowdRoutingProps) => {
   const [route, setRoute] = useState<{ recommendedGate: Gate; alternatives: Gate[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [mobilityFirst, setMobilityFirst] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [mobilityFirst, setMobilityFirst] = useState<boolean>(false);
 
+  /**
+   * Fetches the best route from the backend API.
+   */
   const getBestRoute = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobilityFirst, userLocation: { lat: 34.0520, lng: -118.2430 } })
+        body: JSON.stringify({ 
+          mobilityFirst, 
+          userLocation: { lat: 34.0520, lng: -118.2430 } // Simulated user location
+        })
       });
+      
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      
       const data = await res.json();
       setRoute(data);
       if (onRouteCalculated) {
         onRouteCalculated(data);
       }
     } catch (err) {
-      console.error('Routing Error:', err);
+      console.error('[CrowdRouting] Calculation Error:', err);
     } finally {
       setLoading(false);
     }
