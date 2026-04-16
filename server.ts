@@ -51,7 +51,7 @@ const apiLimiter = rateLimit({
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20,
+  max: 50,
   message: { error: 'AI limit reached. Please wait an hour.' }
 });
 

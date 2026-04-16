@@ -53,15 +53,19 @@ export const AnalyticsDashboard = React.memo(() => {
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         
-        console.error('[AnalyticsDashboard] Fetch Error:', err);
+        const message = err instanceof Error ? err.message : 'Failed to fetch analytics';
+        
+        // Only log to console if it's not a common/expected network error
+        if (!message.includes('Failed to fetch') && !message.includes('restarting')) {
+          console.error('[AnalyticsDashboard] Fetch Error:', message);
+        }
+
         if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Failed to fetch analytics';
           setError(message);
           
           // Retry logic for "Failed to fetch" (network errors)
           if ((message.includes('Failed to fetch') || message.includes('Query Timeout')) && retryCount < MAX_RETRIES) {
             retryCount++;
-            console.log(`[AnalyticsDashboard] Retrying fetch (${retryCount}/${MAX_RETRIES})...`);
             setTimeout(() => fetchReport(signal), 2000 * retryCount);
           }
         }
