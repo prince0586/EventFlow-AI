@@ -1,7 +1,7 @@
-# FanFlow AI - System Design Document
+# PeopleFlow AI - System Design Document
 
 ## 1. Executive Summary
-FanFlow AI is a production-ready solution designed to optimize the attendee experience at large-scale sporting venues. By integrating real-time crowd data, AI-driven concierge services, and virtual queuing, the platform reduces friction, wait times, and congestion.
+PeopleFlow AI is a production-ready solution designed to optimize the attendee experience at large-scale sporting venues. By integrating real-time crowd data, AI-driven concierge services, and virtual queuing, the platform reduces friction, wait times, and congestion.
 
 ## 2. Technical Architecture (Zero-Cost Stack)
 - **Frontend:** React (TypeScript / Vite)

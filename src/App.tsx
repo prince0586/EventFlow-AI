@@ -11,7 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
 /**
- * FanFlow AI - Enterprise Venue Management System
+ * PeopleFlow AI - Enterprise Venue Management System
  * 
  * The root application component that orchestrates the layout, authentication state,
  * and global theme settings. It features a responsive grid layout optimized for
@@ -43,7 +43,7 @@ export default function App() {
    * Effect hook to initialize and sync theme with system preferences and localStorage.
    */
   useEffect(() => {
-    const savedTheme = localStorage.getItem('fanflow-theme') as any;
+    const savedTheme = localStorage.getItem('peopleflow-theme') as any;
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     const initialTheme = savedTheme || (systemDark ? 'dark' : 'light');
@@ -57,7 +57,7 @@ export default function App() {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark', 'high-contrast');
     root.classList.add(theme);
-    localStorage.setItem('fanflow-theme', theme);
+    localStorage.setItem('peopleflow-theme', theme);
   }, [theme]);
 
   /**
@@ -87,7 +87,7 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-brand animate-spin" />
           <p className="text-sm font-bold text-text-sub uppercase tracking-widest animate-pulse">
-            Initializing FanFlow AI...
+            Initializing PeopleFlow AI...
           </p>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function App() {
               {theme === 'high-contrast' ? 'Standard Mode' : 'High Contrast'}
             </button>
             <div className="text-text-sub italic">
-              FanFlow AI v2.1.0 • 2026
+              PeopleFlow AI v2.1.0 • 2026
             </div>
           </div>
         </footer>

@@ -1,5 +1,5 @@
 /**
- * Shared types for FanFlow AI
+ * Shared types for PeopleFlow AI
  */
 
 /**

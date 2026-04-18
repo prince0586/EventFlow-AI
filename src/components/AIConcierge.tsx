@@ -12,7 +12,7 @@ interface AIConciergeProps {
 /**
  * AIConcierge Component
  * 
- * Provides a chat interface for the FanFlow AI Venue Concierge.
+ * Provides a chat interface for the PeopleFlow AI Venue Concierge.
  * Features persistent chat history stored in Firestore and real-time synchronization.
  * 
  * @component

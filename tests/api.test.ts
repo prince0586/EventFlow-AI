@@ -3,7 +3,7 @@ import request from 'supertest';
 import { createServer } from '../server';
 import { Express } from 'express';
 
-describe('FanFlow AI API Integration Tests', () => {
+describe('PeopleFlow AI API Integration Tests', () => {
   let app: Express;
 
   beforeAll(async () => {
