@@ -21,8 +21,9 @@ export class AIService {
    * @throws Error if the API key is missing or invalid.
    */
   public static init(apiKey: string): void {
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      console.warn("[AIService] Warning: GEMINI_API_KEY is not configured correctly.");
+    if (!apiKey) {
+      console.warn("[AIService] CRITICAL: GEMINI_API_KEY is missing. AI functionality will be disabled.");
+      return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
   }

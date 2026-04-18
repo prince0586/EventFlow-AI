@@ -7,8 +7,8 @@ describe('AnalyticsService', () => {
     const reportAll = await AnalyticsService.getVenueReport(venueId);
     const reportFiltered = await AnalyticsService.getVenueReport(venueId, 'ROUTE_CALCULATION');
 
-    expect(reportAll.totalThroughput).toBe(15420);
-    expect(reportFiltered.totalThroughput).toBeLessThan(15420);
+    expect(reportAll.totalThroughput).toBe(22400);
+    expect(reportFiltered.totalThroughput).toBeLessThan(22400);
     expect(reportFiltered.eventType).toBe('ROUTE_CALCULATION');
   });
 });

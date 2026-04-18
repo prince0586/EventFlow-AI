@@ -203,9 +203,9 @@ export async function createServer() {
     const { message, context, userId, history } = validation.data;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    if (!apiKey) {
       return res.status(500).json({ 
-        error: "GEMINI_API_KEY not configured. Please add your API key in the AI Studio Secrets panel." 
+        error: "GEMINI_API_KEY not found in environment. The platform should inject this automatically. Please check your AI Studio project settings." 
       });
     }
 
