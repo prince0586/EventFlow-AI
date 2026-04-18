@@ -61,13 +61,17 @@ export class VenueService {
   }
 
   /**
-   * Optimized routing algorithm to find the best entry/exit gate.
-   * Uses a weighted scoring system: Distance (70%) + Congestion (30%).
+   * Optimized routing algorithm to find the optimal ingress/egress trajectory.
+   * Utilizes a weighted cost heuristic:
+   * Cost = (Distance × 0.4) + (Congestion × 0.6)
    * 
-   * @param userLocation - The current lat/lng coordinates of the user.
-   * @param mobilityFirst - Boolean flag to prioritize accessible gates.
-   * @param venueId - The ID of the venue for which to calculate routing.
-   * @returns A Promise resolving to a sorted list of gates with calculated scores.
+   * This ensures high-throughput load balancing across venue assets while 
+   * maintaining user efficiency.
+   * 
+   * @param userLocation - Geographic coordinates of the user.
+   * @param mobilityFirst - If enabled, filters strictly for barrier-free paths (ADA).
+   * @param venueId - Target facility identifier.
+   * @returns A Promise resolving to a ranked list of gates by calculated cost-score.
    */
   public static async calculateBestRoute(
     userLocation: { lat: number, lng: number }, 
@@ -75,20 +79,31 @@ export class VenueService {
     venueId: string
   ): Promise<Gate[]> {
     const venue = await this.getVenueData(venueId);
-    const availableGates = mobilityFirst ? venue.gates.filter(g => g.isAccessible) : venue.gates;
+    
+    // Strict adherence to accessibility mandates (WCAG/ADA)
+    const availableGates = mobilityFirst 
+      ? venue.gates.filter(g => g.isAccessible) 
+      : venue.gates;
 
     const scoredGates = availableGates.map(gate => {
-      // Euclidean distance approximation for performance
+      // Euclidean relative distance for low-latency scoring
       const distance = Math.sqrt(
         Math.pow(gate.lat - userLocation.lat, 2) + 
         Math.pow(gate.lng - userLocation.lng, 2)
       );
       
-      // Weighted score calculation: Distance (70%) + Congestion (30%)
-      const score = (distance * 0.7) + (gate.congestion * 0.3);
+      /**
+       * COST CALCULATION ENGINE
+       * Distance represents geometric friction.
+       * Congestion represents temporal friction.
+       * We weigh congestion higher (60%) to prevent stadium bottleneck points.
+       */
+      const score = (distance * 1000 * 0.4) + (gate.congestion * 100 * 0.6);
+      
       return { ...gate, score };
     });
 
+    // Lowest cost-score represents the peak operational efficiency path
     return scoredGates.sort((a, b) => (a.score || 0) - (b.score || 0));
   }
 

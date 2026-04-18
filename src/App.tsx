@@ -109,7 +109,7 @@ export default function App() {
           {/* Center: Live Map & Routing */}
           <section className="bg-surface p-6 overflow-y-auto flex flex-col gap-6" aria-label="Live Navigation and Routing">
             <div className="flex-1 min-h-[400px]">
-              <LiveMap activeRoute={activeRoute} />
+              <LiveMap activeRoute={activeRoute} user={user} />
             </div>
             <div className="h-[300px]">
               <CrowdRouting onRouteCalculated={setActiveRoute} />

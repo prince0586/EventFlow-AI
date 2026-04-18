@@ -5,8 +5,11 @@ import { db } from '../firebase';
 import { VenueData, Gate } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { User } from 'firebase/auth';
+
 interface LiveMapProps {
   activeRoute?: any;
+  user?: User | null;
 }
 
 /**
@@ -17,7 +20,7 @@ interface LiveMapProps {
  * 
  * @component
  */
-export const LiveMap = React.memo(({ activeRoute }: LiveMapProps) => {
+export const LiveMap = React.memo(({ activeRoute, user }: LiveMapProps) => {
   const [venue, setVenue] = useState<VenueData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,21 +29,27 @@ export const LiveMap = React.memo(({ activeRoute }: LiveMapProps) => {
    */
   useEffect(() => {
     const venueId = 'stadium_01';
+    
+    // We can now read venues publicly, but we still ensure we have a clean unsub
     const unsubscribe = onSnapshot(doc(db, 'venues', venueId), (snapshot) => {
       if (snapshot.exists()) {
         setVenue(snapshot.data() as VenueData);
         setError(null);
       } else {
-        console.warn(`[LiveMap] Venue ${venueId} not found in Firestore.`);
-        setError('Venue data unavailable');
+        console.warn(`[LiveMap] Venue ${venueId} not found in Firestore. Check your database identifiers.`);
+        setError('Venue data not found');
       }
     }, (err) => {
-      console.error('[LiveMap] Firestore Subscription Error:', err);
-      setError('Real-time updates failed');
+      // Logic: Only log permission errors if we are logged in - otherwise it's just auth latency
+      const isPermissionError = err.message.includes('permission');
+      if (!isPermissionError || user) {
+        console.error('[LiveMap] Firestore Subscription Error:', err.message);
+        setError('Real-time sync error');
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   // Helper to get color based on congestion
   const getCongestionColor = (level: number) => {

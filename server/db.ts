@@ -72,7 +72,8 @@ export const executeWithFirestoreFallback = async <T>(
                          error.code === 7;   // PERMISSION_DENIED
     
     if (isAccessError && !isPrimaryUnhealthy) {
-      console.log(`[Firebase] Primary DB (${firestoreDatabaseId}) unavailable. Switching to resilient '(default)' instance.`);
+      const dbIdLabel = firestoreDatabaseId || '(default)';
+      console.log(`[Firebase] Primary DB Instance [${dbIdLabel}] returned ${error.code || 'ACCESS_ERROR'}. Switching to fallback instance.`);
       isPrimaryUnhealthy = true;
       const defaultDb = getFirestoreDB(true);
       if (defaultDb) {

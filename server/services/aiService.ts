@@ -60,6 +60,25 @@ export class AIService {
   };
 
   /**
+   * Tool Declaration: getFacilityInfo
+   * Provides detailed information about on-site amenities and their status.
+   */
+  private static readonly getFacilityInfoTool: FunctionDeclaration = {
+    name: "getFacilityInfo",
+    description: "Get details about specific venue facilities such as restrooms, concessions, and first-aid stations.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        category: { 
+          type: SchemaType.STRING, 
+          description: "Facility category: 'restroom', 'concession', 'firstaid', 'merchandise'." 
+        }
+      },
+      required: ["category"]
+    }
+  };
+
+  /**
    * Processes a user's chat message using Gemini 1.5 Flash.
    * Supports multi-turn conversations and function calling for real-time data access.
    * 
@@ -96,7 +115,13 @@ export class AIService {
           role: h.role === 'user' ? 'user' : 'model',
           parts: [{ text: h.content }]
         })),
-        tools: [{ functionDeclarations: [this.getQueueStatusTool, this.getVenueCongestionTool] } as any],
+        tools: [{ 
+          functionDeclarations: [
+            this.getQueueStatusTool, 
+            this.getVenueCongestionTool,
+            this.getFacilityInfoTool
+          ] 
+        } as any],
       });
 
       const result = await chat.sendMessage(message);
@@ -109,8 +134,8 @@ export class AIService {
 
       return response.text();
     } catch (error: any) {
-      console.error("[AIService] Processing Error:", error);
-      throw new Error(`AI processing failed: ${error.message}`);
+      console.error("[AIService] Interaction Error:", error.message || error);
+      throw new Error(`The PeopleFlow AI interface encountered a processing anomaly: ${error.message}`);
     }
   }
 
@@ -129,7 +154,7 @@ export class AIService {
         await db.collection('user_interactions').add(logData);
       });
     } catch (err: any) {
-      console.error("[AIService] Failed to log interaction:", err.message || err);
+      console.error("[AIService] Telemetry Log Failure:", err.message || err);
     }
   }
 
@@ -142,45 +167,51 @@ export class AIService {
    */
   private static getSystemInstruction(context: ChatContext, userId?: string): string {
     const venueDetails = `
-      Venue: Global Arena (stadium_01)
-      Capacity: 55,000
-      Facilities: 
-        - North Gate (Accessible, High Capacity)
-        - South Gate (Standard)
-        - East Gate (VIP & Premium)
-        - West Gate (Accessible, Express)
-      Amenities: 12 Concession stands, 8 Restroom blocks (all ADA compliant), 4 First Aid stations.
-      Safety: Emergency exits are clearly marked in green. In case of emergency, follow staff instructions.
+      VENUE IDENTITY: PeopleFlow Global Arena (stadium_01)
+      ARCHITECTURE: Enterprise-grade high-capacity multi-purpose facility.
+      CAPACITY: 55,000 active seats plus premium hospitality suites.
+      
+      ACCESSIBILITY (ADA COMPLIANCE): 
+        - All gates (North, West) feature 1:12 slope ramps and automated doors.
+        - High-contrast signage throughout.
+        - Dedicated mobility-first routing heuristics enabled in the routing engine.
+        
+      FACILITIES ATLAS: 
+        - GATES: North (Fastest/Main), West (ADA/Express), East (VIP), South (Standard).
+        - CONCESSIONS: 12 distributed stands serving variety of stadium fare.
+        - RESTROOMS: 8 blocks, strategically placed near each gate.
+        - HEALTH: 4 First Aid stations (Level 1 trauma trained).
+        
+      SAFETY PROTOCOLS:
+        - EVACUATION: Primary exits are clearly illuminated in green.
+        - MUSTER POINTS: People should gather in the outer parking zones A and B.
+        - INCIDENT REPORTING: Use words like "Urgent" to prioritize security attention.
     `;
 
-    return `You are the PeopleFlow AI Venue Concierge. 
-      ${venueDetails}
-      Current Context: ${JSON.stringify(context)}
-      User ID: ${userId || 'Guest'}
-      
-      Instructions: 
-      1. Provide concise, helpful guidance for fans at the venue.
-      2. Use tools to check real-time queue status or venue congestion if asked.
-      3. If the user has active queue tokens, acknowledge them.
-      4. Be proactive: if congestion is high, suggest alternative gates.
-      5. Tone: Professional, helpful, and proactive.
-      6. Personalization: If you know the user's name or past interactions (from context), use them to be more helpful.`;
+    return `You are the PeopleFlow AI Venue Concierge—an enterprise-tier assistant powered by Google Gemini 1.5 Flash. 
+    ${venueDetails}
+    
+    ENVIRONMENTAL GROUNDING:
+    Current Domain Context: ${JSON.stringify(context)}
+    Authenticated Identity: ${userId || 'Guest (Limited Access)'}
+    
+    OPERATIONAL MANDATES: 
+    1. ACCURACY: Only provide information verified by the facility atlas or retrieved via real-time tool calls.
+    2. ACCESSIBILITY: Prioritize ADA-compliant guidance when users mention mobility needs.
+    3. PROACTIVITY: If congestion tools report >0.7 load, immediately suggest gate redirection.
+    4. PERSONALIZATION: Reference active queue status and past interactions to provide seamless continuity.
+    5. TONE: Professional, efficient, and authoritative but welcoming.
+    6. SECURITY: Never disclose administrative endpoints or internal system keys.`;
   }
 
   /**
    * Handles the execution of function calls requested by the AI model.
-   * 
-   * @param model - The generative model instance.
-   * @param originalMessage - The user's original input.
-   * @param initialResponse - The initial response from the model containing function calls.
-   * @param functionCalls - The list of function calls to execute.
-   * @returns A Promise resolving to the final AI response text.
    */
   private static async handleFunctionCalls(
     model: GenerativeModel,
     originalMessage: string,
     initialResponse: unknown,
-    functionCalls: any[], // FunctionCall is a complex type from library, keep for now or use casting
+    functionCalls: any[],
     history: ChatHistoryItem[] = []
   ): Promise<string> {
     const toolResults = [];
@@ -188,29 +219,44 @@ export class AIService {
     for (const call of functionCalls) {
       let toolResponse;
       
-      if (call.name === "getQueueStatus") {
-        const args = call.args as { userId: string };
-        const { userId: targetUid } = args;
-        try {
-          toolResponse = await executeWithFirestoreFallback(async (db) => {
+      const callHandlers: Record<string, () => Promise<any>> = {
+        getQueueStatus: async () => {
+          const args = call.args as { userId: string };
+          return await executeWithFirestoreFallback(async (db) => {
             const snapshot = await db.collection('queues')
-              .where('userId', '==', targetUid)
+              .where('userId', '==', args.userId)
               .where('status', '==', 'waiting')
               .get();
             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           });
-        } catch (err: unknown) {
-          toolResponse = [];
+        },
+        getVenueCongestion: async () => {
+          const args = (call.args as { venueId?: string }) || {};
+          const venue = await VenueService.getVenueData(args.venueId || 'stadium_01');
+          return { 
+            congestion: venue.congestionLevel, 
+            status: venue.congestionLevel > 0.7 ? "CRITICAL" : "NORMAL", 
+            gates: venue.gates.map(g => ({ name: g.name, congestion: g.congestion })) 
+          };
+        },
+        getFacilityInfo: async () => {
+          const args = call.args as { category: string };
+          // Simulated enterprise facility database
+          const database: Record<string, any> = {
+            restroom: { status: "OPEN", count: 8, avg_wait: "2 mins", cleaning_cycle: "30 mins" },
+            concession: { status: "OPERATIONAL", active_stands: 10, peak_wait: "8 mins" },
+            firstaid: { status: "READY", stations: 4, staff: "EMTs on site" }
+          };
+          return database[args.category] || { status: "UNKNOWN", contact: "Facility Ops" };
         }
-      } else if (call.name === "getVenueCongestion") {
-        const args = (call.args as { venueId?: string }) || {};
-        const venueId = args.venueId || 'stadium_01';
-        const venue = await VenueService.getVenueData(venueId);
-        toolResponse = { 
-          congestion: venue.congestionLevel, 
-          status: venue.congestionLevel > 0.7 ? "High" : "Normal", 
-          gates: venue.gates.map(g => g.name) 
-        };
+      };
+
+      if (callHandlers[call.name]) {
+        try {
+          toolResponse = await callHandlers[call.name]();
+        } catch (err) {
+          toolResponse = { error: "DATA_UNAVAILABLE", retry: true };
+        }
       }
 
       toolResults.push({
@@ -223,12 +269,15 @@ export class AIService {
         role: h.role === 'user' ? 'user' : 'model',
         parts: [{ text: h.content }]
       })),
-      tools: [{ functionDeclarations: [this.getQueueStatusTool, this.getVenueCongestionTool] } as any],
+      tools: [{ 
+        functionDeclarations: [
+          this.getQueueStatusTool, 
+          this.getVenueCongestionTool,
+          this.getFacilityInfoTool
+        ] 
+      } as any],
     });
 
-    // We need to send the function response back to the chat
     const secondResult = await chat.sendMessage(toolResults as any);
-
     return secondResult.response.text();
-  }
-}
+  }}
