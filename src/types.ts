@@ -171,4 +171,8 @@ export interface AnalyticsReport {
   status: 'Complete' | 'Partial' | 'Degraded';
   /** Optional warnings about data gaps or anomalies */
   warning?: string;
+  /** Flag indicating if anomalous patterns were detected in the telemetry stream */
+  anomaliesDetected?: boolean;
+  /** High-level operational insight derived from data aggregation */
+  insights?: string;
 }

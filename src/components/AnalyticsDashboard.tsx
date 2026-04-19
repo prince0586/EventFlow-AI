@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Activity, PieChart } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, PieChart, AlertCircle } from 'lucide-react';
 import { AnalyticsReport } from '../types';
 
 /**
@@ -143,6 +143,17 @@ export const AnalyticsDashboard = React.memo(() => {
         {report?.warning && (
           <div className="bg-accent-red/5 border border-accent-red/20 rounded p-2 text-[8px] text-accent-red italic leading-tight">
             ⚠️ {report.warning}
+          </div>
+        )}
+
+        {report?.anomaliesDetected && (
+          <div className="bg-accent-red border-l-2 border-accent-red p-2 space-y-1 animate-pulse">
+            <div className="flex items-center gap-1 text-[9px] font-bold text-white uppercase tracking-wider">
+              <AlertCircle size={10} /> ANOMALY DETECTED
+            </div>
+            {report.insights && (
+              <p className="text-[8px] text-white/90 leading-tight italic">{report.insights}</p>
+            )}
           </div>
         )}
 

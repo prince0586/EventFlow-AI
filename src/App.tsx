@@ -10,6 +10,7 @@ import { LiveMap } from './components/LiveMap';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { RouteCalculationResult } from './types';
+import { useTheme } from './hooks/useTheme';
 
 /**
  * PeopleFlow AI - Enterprise Venue Management System
@@ -23,8 +24,9 @@ import { RouteCalculationResult } from './types';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'high-contrast'>('light');
   const [activeRoute, setActiveRoute] = useState<RouteCalculationResult | null>(null);
+  
+  const { theme, toggleTheme, toggleHighContrast } = useTheme();
 
   /**
    * Effect hook to synchronize authentication state with Firebase.
@@ -38,41 +40,6 @@ export default function App() {
       }
     });
     return () => unsubscribe();
-  }, []);
-
-  /**
-   * Effect hook to initialize and sync theme with system preferences and localStorage.
-   */
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('peopleflow-theme') as 'light' | 'dark' | 'high-contrast' | null;
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    const initialTheme = savedTheme || (systemDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-  }, []);
-
-  /**
-   * Effect hook to apply theme classes to the document root.
-   */
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark', 'high-contrast');
-    root.classList.add(theme);
-    localStorage.setItem('peopleflow-theme', theme);
-  }, [theme]);
-
-  /**
-   * Toggles between light and dark modes.
-   */
-  const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  }, []);
-
-  /**
-   * Toggles high-contrast mode.
-   */
-  const toggleHighContrast = useCallback(() => {
-    setTheme(prev => prev === 'high-contrast' ? 'light' : 'high-contrast');
   }, []);
 
   /**

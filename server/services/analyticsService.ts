@@ -75,6 +75,7 @@ export class AnalyticsService {
 
   /**
    * Generates a multidimensional performance report via real-time aggregation.
+   * Includes simulated anomaly detection for operational intelligence.
    * 
    * @param venueId - Target facility scope.
    * @param eventType - Filter for specific operational domains.
@@ -117,6 +118,10 @@ export class AnalyticsService {
       const congestions = docs.map(d => Number(d.payload?.congestion) || 0.4).filter(c => !isNaN(c));
       const peak = congestions.length > 0 ? Math.max(...congestions) : 0.82;
 
+      // Simulated Anomaly Detection Logic
+      const hasCongestionAnomaly = peak > 0.95;
+      const hasWaitTimeAnomaly = avgWait > 25;
+
       return {
         venueId,
         eventType: eventType || 'all',
@@ -125,7 +130,9 @@ export class AnalyticsService {
         avgWaitTime: Number(avgWait.toFixed(1)),
         totalThroughput: throughput,
         generatedAt: new Date().toISOString(),
-        status: 'Complete'
+        status: 'Complete',
+        anomaliesDetected: hasCongestionAnomaly || hasWaitTimeAnomaly,
+        insights: hasCongestionAnomaly ? 'Critical congestion detected at North Gate. Diverting flow recommended.' : undefined
       };
     } catch (error: unknown) {
       const err = error as { code?: number; message?: string };
