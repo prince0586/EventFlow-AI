@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'Consolas', 'Monaco', monospace;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-serif: 'Georgia', serif;
   --color-brand: #4285F4;
   --color-brand-dark: #3367D6;
   --color-bg: var(--bg);

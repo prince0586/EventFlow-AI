@@ -122,18 +122,17 @@ export const VirtualQueue = React.memo(({ user }: VirtualQueueProps) => {
                 <div className="px-2 py-0.5 bg-brand/10 text-brand text-[10px] uppercase font-bold rounded tracking-wider">
                   {token.serviceType}
                 </div>
-                <div className="text-[10px] text-text-sub font-mono bg-bg px-1.5 py-0.5 rounded">
-                  ID: {token.id.slice(-6)}
+                <div className="text-[10px] text-text-sub font-mono bg-bg px-1.5 py-0.5 rounded border border-border">
+                  ID: <span className="text-text-main">{token.id.slice(-6)}</span>
                 </div>
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-[10px] text-text-sub uppercase font-bold mb-1 flex items-center gap-1">
+                  <p className="text-[11px] text-text-sub font-serif italic mb-1 flex items-center gap-1 opacity-80">
                     <Clock size={10} /> Estimated Wait
                   </p>
-                  <p className="text-2xl font-bold text-brand tabular-nums">
-                    {Math.round(token.estimatedWaitTime)}
-                    <span className="text-xs ml-1 font-normal text-text-sub">min</span>
+                  <p className="text-3xl font-mono font-bold text-brand tracking-tighter">
+                    {Math.round(token.estimatedWaitTime)}<span className="text-xs ml-1 font-sans font-medium text-text-sub">min</span>
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">

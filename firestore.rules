@@ -11,7 +11,7 @@ service cloud.firestore {
     // ===============================================================
     function isSignedIn() { return request.auth != null; }
     function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isOwner(userId) { return isVerified() && request.auth.uid == userId; }
     function isAdmin() { 
       return isVerified() && request.auth.token.email == "princeradadia@gmail.com"; 
     }
@@ -46,7 +46,7 @@ service cloud.firestore {
       allow update: if isVerified() && 
                       resource.data.userId == request.auth.uid &&
                       incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                      incoming().status == 'cancelled';
+                      (incoming().status == 'cancelled' || isAdmin());
     }
 
     match /venues/{venueId} {
@@ -55,7 +55,7 @@ service cloud.firestore {
     }
 
     match /chats/{chatId}/messages/{messageId} {
-      allow read: if isOwner(chatId);
+      allow read: if isOwner(chatId) || isAdmin();
       allow create: if isOwner(chatId) && 
                       incoming().userId == request.auth.uid &&
                       incoming().keys().hasAll(['userId', 'role', 'content', 'timestamp']);

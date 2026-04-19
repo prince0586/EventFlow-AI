@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { MessageSquare, ChevronRight, Send, Bot, User as UserIcon, AlertCircle } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { ChatMessage } from '../types';
+import { ChatMessage, ChatHistoryItem } from '../types';
 import { db } from '../firebase';
+import { FrontendAIService } from '../lib/ai';
 import { collection, query, orderBy, onSnapshot, addDoc, limit, serverTimestamp } from 'firebase/firestore';
 
 interface AIConciergeProps {
@@ -88,40 +89,30 @@ export const AIConcierge = React.memo(({ user }: AIConciergeProps) => {
         timestamp: serverTimestamp()
       });
 
-      // 2. Fetch AI response
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: userMsgContent, 
-          context: { 
-            venue: 'Global Arena', 
-            user: user.displayName || 'Guest',
-            activeTokens: messages.length
-          },
-          userId: user.uid,
-          history: messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
-        })
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || `HTTP ${res.status}`);
-      }
-      
-      const data = await res.json();
+      // 2. Fetch AI response directly using modern @google/genai SDK on the frontend
+      const aiResponse = await FrontendAIService.processChat(
+        userMsgContent,
+        { 
+          venue: 'Global Arena', 
+          user: user.displayName || 'Guest',
+          activeTokens: messages.length,
+          timestamp: new Date().toISOString()
+        },
+        messages.slice(-10).map(m => ({ role: m.role, content: m.content }) as ChatHistoryItem)
+      );
 
       // 3. Save AI response to Firestore
       await addDoc(collection(db, 'chats', chatId, 'messages'), {
         userId: user.uid,
         role: 'model',
-        content: data.text,
+        content: aiResponse,
         timestamp: serverTimestamp()
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       console.error('[AIConcierge] Chat Error:', err);
-      setError(`Chat failed: ${err.message}`);
+      setError(`Chat failed: ${errorMsg}`);
       
       // Optionally add a local error message
       setMessages(prev => [...prev, { 

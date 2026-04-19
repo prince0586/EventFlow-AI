@@ -172,31 +172,31 @@ export const AnalyticsDashboard = React.memo(() => {
 
       <div className="grid grid-cols-2 gap-4" aria-live="polite">
         <div className="space-y-1">
-          <p className="text-[9px] text-text-sub uppercase font-bold">Peak Congestion</p>
+          <p className="text-[10px] text-text-sub font-serif italic opacity-80">Peak Congestion</p>
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold tabular-nums">{(report?.peakCongestion * 100).toFixed(0)}%</span>
+            <span className="text-xl font-mono font-bold tracking-tighter">{(report?.peakCongestion * 100).toFixed(0)}%</span>
             <TrendingUp size={10} className="text-accent-red" aria-hidden="true" />
           </div>
-          <div className="w-full h-1 bg-bg rounded-full overflow-hidden" role="progressbar" aria-valuenow={report?.peakCongestion * 100} aria-valuemin={0} aria-valuemax={100}>
+          <div className="w-full h-1 bg-bg rounded-full overflow-hidden border border-border" role="progressbar" aria-valuenow={report?.peakCongestion * 100} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full bg-accent-red transition-all duration-1000" style={{ width: `${report?.peakCongestion * 100}%` }} />
           </div>
         </div>
 
         <div className="space-y-1">
-          <p className="text-[9px] text-text-sub uppercase font-bold">Avg Wait Time</p>
+          <p className="text-[10px] text-text-sub font-serif italic opacity-80">Avg Wait Time</p>
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold tabular-nums">{report?.avgWaitTime}m</span>
+            <span className="text-xl font-mono font-bold tracking-tighter">{report?.avgWaitTime}m</span>
             <PieChart size={10} className="text-brand" aria-hidden="true" />
           </div>
-          <div className="w-full h-1 bg-bg rounded-full overflow-hidden" role="progressbar" aria-valuenow={65} aria-valuemin={0} aria-valuemax={100}>
+          <div className="w-full h-1 bg-bg rounded-full overflow-hidden border border-border" role="progressbar" aria-valuenow={65} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full bg-brand transition-all duration-1000" style={{ width: '65%' }} />
           </div>
         </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-        <div className="text-[9px] text-text-sub font-medium">
-          Total Throughput: <span className="text-text-main font-bold tabular-nums">{report?.totalThroughput.toLocaleString()}</span>
+        <div className="text-[9px] text-text-sub font-serif italic">
+          Total Throughput: <span className="text-text-main font-mono font-bold">{report?.totalThroughput.toLocaleString()}</span>
         </div>
         <div className="text-[9px] text-text-sub font-mono italic">
           Tier: Enterprise Analytics

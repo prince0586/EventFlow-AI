@@ -121,6 +121,18 @@ export interface ChatHistoryItem {
 }
 
 /**
+ * Represents the calculated routing result including recommended path and alternatives.
+ */
+export interface RouteCalculationResult {
+  /** The primary high-performance route recommendation */
+  recommendedGate: Gate;
+  /** Alternative ingress/egress points ranked by heuristic score */
+  alternatives: Gate[];
+  /** Geographic center of the request */
+  requestLocation: Location;
+}
+
+/**
  * An analytical event logged to the telemetry system.
  * Used for enterprise performance reporting and traffic analysis.
  */
@@ -132,7 +144,7 @@ export interface AnalyticsEvent {
   /** Mandatory venue identifier */
   venueId: string;
   /** Arbitrary data payload specific to the event type */
-  payload: Record<string, any>;
+  payload: Record<string, string | number | boolean | null | undefined>;
   /** ISO 8601 creation timestamp */
   timestamp: string;
 }

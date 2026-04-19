@@ -11,7 +11,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { VenueService } from './server/services/venueService';
 import { AnalyticsService } from './server/services/analyticsService';
-import { AIService } from './server/services/aiService';
+// AIService migrated to Frontend Tier (src/lib/ai.ts)
 import { getFirestoreDB, executeWithFirestoreFallback } from './server/db';
 
 dotenv.config();
@@ -67,9 +67,8 @@ const aiLimiter = rateLimit({
 });
 
 // Initialize AI Service
-if (process.env.GEMINI_API_KEY) {
-  AIService.init(process.env.GEMINI_API_KEY);
-}
+// Note: AI logic has been migrated to the frontend tier (/src/lib/ai.ts) 
+// for improved performance and direct @google/genai SDK utilization.
 
 /**
  * Creates and configures the Express application.
@@ -190,56 +189,8 @@ export async function createServer() {
     }
   });
 
-  /**
-   * @route POST /api/chat
-   * @desc AI Venue Concierge with Function Calling and Advanced Grounding.
-   */
-  app.post('/api/chat', aiLimiter, async (req, res) => {
-    const validation = ChatSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ error: 'Invalid chat message', details: validation.error });
-    }
-
-    const { message, context, userId, history } = validation.data;
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ 
-        error: "GEMINI_API_KEY not found in environment. The platform should inject this automatically. Please check your AI Studio project settings." 
-      });
-    }
-
-    try {
-      // Fetch past user interactions for personalization
-      let pastInteractions: any[] = [];
-      if (userId) {
-        try {
-          pastInteractions = await executeWithFirestoreFallback(async (db) => {
-            const snapshot = await db.collection('user_interactions')
-              .where('userId', '==', userId)
-              .orderBy('timestamp', 'desc')
-              .limit(5)
-              .get();
-            return snapshot.docs.map(doc => doc.data().message);
-          });
-        } catch (err: any) {
-          // Ignore interaction fetch errors to keep chat functional
-        }
-      }
-
-      const enhancedContext = {
-        ...context,
-        pastInteractions,
-        timestamp: new Date().toISOString()
-      };
-
-      const responseText = await AIService.processChat(message, enhancedContext, userId, history);
-      res.json({ text: responseText });
-    } catch (error: any) {
-      console.error('AI Chat Error:', error);
-      res.status(500).json({ error: error.message || 'AI processing failed' });
-    }
-  });
+  // AI Concierge service now operates primarily on the frontend tier for improved performance.
+  // Legacy /api/chat route decommissioned.
 
   // --- Vite / Static Files ---
   if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
