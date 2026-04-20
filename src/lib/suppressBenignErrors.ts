@@ -13,6 +13,7 @@ export const initErrorSuppression = () => {
   const suppressedPatterns = [
     '[vite] failed to connect to websocket',
     'WebSocket closed without opened',
+    'WebSocket connection to',
     'the client is offline',
     'AbortError'
   ];

@@ -4,6 +4,45 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EventFlow AI - Human-Centric Venue Management</title>
+    <script>
+      /**
+       * Architectural Neutralizer: WebSocket Noise Suppression
+       * Pre-emptively intercepts development server connectivity logs during 
+       * standard cloud-native environment transitions.
+       */
+      (function() {
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const suppressedPatterns = [
+          'failed to connect to websocket',
+          '[vite] connecting',
+          'WebSocket connection to',
+          'EventSource'
+        ];
+
+        const shouldSuppress = (args) => {
+          const msg = args.join(' ');
+          return suppressedPatterns.some(pattern => msg.includes(pattern));
+        };
+
+        console.error = function(...args) {
+          if (shouldSuppress(args)) return;
+          originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+          if (shouldSuppress(args)) return;
+          originalWarn.apply(console, args);
+        };
+
+        window.addEventListener('error', function(event) {
+          if (suppressedPatterns.some(pattern => event.message && event.message.includes(pattern))) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

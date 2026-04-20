@@ -22,7 +22,7 @@ export const Header = React.memo(({ user, onToggleTheme, currentTheme }: HeaderP
     <div className="flex items-center gap-3">
       <div className="w-8 h-8 bg-brand rounded-md flex items-center justify-center text-white font-bold text-lg" aria-hidden="true">F</div>
       <h1 className="text-lg font-semibold tracking-tight text-text-main">
-        FANFLOW AI <span className="font-normal text-text-sub ml-2 hidden sm:inline">Enterprise Venue System</span>
+        EVENTFLOW AI <span className="font-normal text-text-sub ml-2 hidden sm:inline">Enterprise Venue System</span>
       </h1>
     </div>
     <div className="flex items-center gap-4">

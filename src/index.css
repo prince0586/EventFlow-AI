@@ -1,36 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,400;1,500;1,600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
-  --font-serif: 'Georgia', serif;
-  --color-brand: #4285F4;
-  --color-brand-dark: #3367D6;
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+  --font-serif: "Playfair Display", "serif";
+
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+  --color-accent-red: #ef4444;
+  --color-accent-green: #22c55e;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-border: var(--border);
   --color-text-main: var(--text-main);
   --color-text-sub: var(--text-sub);
-  --color-border: var(--border);
-  --color-accent-green: #34A853;
-  --color-accent-amber: #FBBC04;
 }
 
 @layer base {
   :root {
     --bg: #F8F9FA;
     --surface: #FFFFFF;
-    --text-main: #202124;
-    --text-sub: #5F6368;
-    --border: #DADCE0;
+    --text-main: #0F172A;
+    --text-sub: #64748B;
+    --border: #E2E8F0;
   }
 
   :root.dark {
-    --bg: #121212;
-    --surface: #1E1E1E;
-    --text-main: #E8EAED;
-    --text-sub: #9AA0A6;
-    --border: #3C4043;
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --text-main: #F8FAFC;
+    --text-sub: #94A3B8;
+    --border: #334155;
   }
 
   :root.high-contrast {
@@ -40,24 +41,50 @@
     --text-sub: #FFFF00;
     --border: #FFFFFF;
   }
+
+  * {
+    @apply border-border;
+    /* Hardware acceleration for smooth transitions and reduced input latency */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0); 
+  }
+  
+  html, body {
+    @apply bg-bg text-text-main selection:bg-brand/10 selection:text-brand h-full overflow-hidden font-sans;
+    /* Optimization for standard high-density displays */
+    image-rendering: -webkit-optimize-contrast;
+  }
 }
 
-body {
-  @apply bg-bg text-text-main font-sans antialiased;
+@layer components {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-text-sub/30 transition-colors;
+  }
+
+  .col-title {
+    @apply pb-2 border-b border-border mb-4 font-extrabold uppercase tracking-[0.2em] text-[10px] text-text-sub;
+  }
 }
 
-.card {
-  @apply bg-surface p-6 rounded-xl border border-border transition-all duration-200;
-}
-
-.card:hover {
-  @apply shadow-sm;
-}
-
-.col-title {
-  @apply text-[11px] uppercase tracking-[0.1em] text-text-sub mb-5 font-bold flex items-center gap-2;
-}
-
-.tag {
-  @apply text-[11px] bg-bg px-2 py-1 rounded border border-border;
+/* 
+ * Performance Instrumentation
+ * Minimizes layout shifts (CLS) and maximizes paint performance.
+ */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }

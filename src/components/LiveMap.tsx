@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Map as MapIcon, Layers, Maximize2, Navigation, AlertCircle } from 'lucide-react';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { VenueData, Gate, RouteCalculationResult } from '../types';
+import { VenueData, RouteCalculationResult } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-
 import { User } from 'firebase/auth';
+import { GateMarker } from './LiveMap/GateMarker';
+import { handleFirestoreError } from '../lib/firestoreErrorHandler';
 
 interface LiveMapProps {
   activeRoute?: RouteCalculationResult;
@@ -13,10 +14,11 @@ interface LiveMapProps {
 }
 
 /**
- * LiveMap Component
+ * LiveMap Architecture
  * 
- * Renders a simulated live venue map with real-time Firestore updates and smooth animations.
- * Subscribes to venue data changes to update gate status and congestion dynamically.
+ * Orchestrates a high-fidelity geospatial representation of the venue.
+ * Manages real-time telemetry ingestion from Firestore with authoritative
+ * error reporting and smooth state transitions.
  * 
  * @component
  */
@@ -25,38 +27,42 @@ export const LiveMap = React.memo(({ activeRoute, user }: LiveMapProps) => {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Effect hook to subscribe to real-time venue updates from Firestore.
+   * Technical Subscription: Real-time Spatial Telemetry
    */
   useEffect(() => {
     const venueId = 'stadium_01';
     
-    // We can now read venues publicly, but we still ensure we have a clean unsub
+    // Establishing authoritative telemetry stream
     const unsubscribe = onSnapshot(doc(db, 'venues', venueId), (snapshot) => {
       if (snapshot.exists()) {
         setVenue(snapshot.data() as VenueData);
         setError(null);
       } else {
-        console.warn(`[LiveMap] Venue ${venueId} not found in Firestore. Check your database identifiers.`);
-        setError('Venue data not found');
+        console.warn(`[LiveMap] Metadata missing for egress identifier: ${venueId}`);
+        setError('Venue metadata offline');
       }
     }, (err) => {
-      // Logic: Only log permission errors if we are logged in - otherwise it's just auth latency
-      const isPermissionError = err.message.includes('permission');
-      if (!isPermissionError || user) {
-        console.error('[LiveMap] Firestore Subscription Error:', err.message);
-        setError('Real-time sync error');
+      try {
+        handleFirestoreError(err, 'get', `venues/${venueId}`);
+      } catch (mappedError: any) {
+        if (!user) {
+          // Graceful degradation for unauthenticated state
+          setError('Sign in for live telemetry');
+        } else {
+          setError('Access restricted');
+          console.error('[LiveMap] Metadata Access Failure:', mappedError.message);
+        }
       }
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // Helper to get color based on congestion
-  const getCongestionColor = (level: number) => {
-    if (level > 0.7) return 'var(--color-accent-red, #ef4444)';
-    if (level > 0.4) return 'var(--color-accent-amber, #f59e0b)';
-    return 'var(--color-accent-green, #10b981)';
-  };
+  const getCongestionColor = useMemo(() => (level: number) => {
+    if (level > 0.7) return '#ef4444'; // accent-red
+    if (level > 0.4) return '#f59e0b'; // accent-amber
+    return '#10b981'; // accent-green
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 h-full" role="region" aria-labelledby="map-title">
@@ -86,17 +92,14 @@ export const LiveMap = React.memo(({ activeRoute, user }: LiveMapProps) => {
       </div>
 
       <div className="flex-1 bg-bg rounded-xl border border-border relative overflow-hidden group">
-        {/* Simulated Google Maps View */}
         <div className="absolute inset-0 bg-[#f8f9fa] flex flex-col items-center justify-center">
           <div className="relative w-full h-full opacity-40 grayscale-[0.5] mix-blend-multiply pointer-events-none">
             <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(#ccc 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
           </div>
           
-          {/* Venue Outline Simulation */}
           <div className="absolute w-48 h-48 border-4 border-brand/20 rounded-full flex items-center justify-center">
             <div className="w-32 h-32 border-2 border-brand/10 rounded-full" />
             
-            {/* User Location Marker */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="w-4 h-4 bg-brand rounded-full border-2 border-white shadow-lg relative z-10" />
               <motion.div 
@@ -106,48 +109,26 @@ export const LiveMap = React.memo(({ activeRoute, user }: LiveMapProps) => {
               />
             </div>
 
-            {/* Real-time Gate Markers */}
             <AnimatePresence>
               {venue?.gates.map((gate, index) => {
-                // Calculate position based on index for simulation
                 const angle = (index / venue.gates.length) * 2 * Math.PI;
                 const x = Math.cos(angle) * 96;
                 const y = Math.sin(angle) * 96;
-                
                 const isRecommended = activeRoute?.recommendedGate?.id === gate.id;
-                const isAlternative = activeRoute?.alternatives?.some((alt: Gate) => alt.id === gate.id);
 
                 return (
-                  <motion.div 
+                  <GateMarker 
                     key={gate.id}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ 
-                      scale: isRecommended ? 1.25 : 1, 
-                      opacity: 1,
-                      x: x,
-                      y: y
-                    }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    className={`absolute flex flex-col items-center z-10 ${isRecommended ? 'z-20' : ''}`}
-                    role="img"
-                    aria-label={`Gate ${gate.name}: ${Math.round(gate.congestion * 100)}% congested`}
-                  >
-                    <motion.div 
-                      animate={{ 
-                        backgroundColor: getCongestionColor(gate.congestion),
-                        boxShadow: isRecommended ? '0 0 10px var(--color-brand)' : 'none'
-                      }}
-                      className="w-3 h-3 rounded-full border-2 border-white shadow-sm relative" 
-                    />
-                    <span className={`text-[8px] font-bold mt-1 px-1 rounded shadow-sm whitespace-nowrap ${isRecommended ? 'bg-brand text-white' : 'bg-white'}`}>
-                      {gate.name}
-                    </span>
-                  </motion.div>
+                    gate={gate}
+                    isRecommended={isRecommended}
+                    x={x}
+                    y={y}
+                    color={getCongestionColor(gate.congestion)}
+                  />
                 );
               })}
             </AnimatePresence>
 
-            {/* Dynamic Route Path */}
             {activeRoute && (
               <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                 <motion.path 
@@ -174,7 +155,7 @@ export const LiveMap = React.memo(({ activeRoute, user }: LiveMapProps) => {
         
         <div className="absolute top-4 left-4 flex flex-col gap-2">
           <div className="bg-white p-2 rounded shadow-md border border-border">
-            <div className="text-[10px] font-bold text-brand mb-1">CURRENT LOCATION</div>
+            <div className="text-[10px] font-bold text-brand mb-1 uppercase">CURRENT LOCATION</div>
             <div className="text-xs font-bold text-text-main">Section 104, Row B</div>
           </div>
         </div>

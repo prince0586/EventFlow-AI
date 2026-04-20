@@ -49,6 +49,7 @@ EventFlow AI is a production-ready solution designed to optimize the attendee ex
 - **Component Memoization**: Used `React.memo`, `useMemo`, and `useCallback` to ensure 60fps UI performance and minimal re-renders.
 
 ### B. Security & Zero-Trust Practices
+- **Defense-in-Depth AI**: Implemented strict input sanitization and length constraints in `FrontendAIService` to mitigate prompt injection.
 - **Frontend-Tier AI Integration**: Gemini 3 Flash is initialized directly on the frontend using the `@google/genai` SDK, leveraging the AI Studio secure environment for API key injection.
 - **Zero-Trust Firestore Rules**: Strict `email_verified` enforcement in `firestore.rules` ensures that only authenticated, verified users can interact with sensitive collections.
 - **Zod Data Validation**: Comprehensive server-side validation of all API telemetry to ensure schema integrity and prevent injection attacks.
@@ -70,6 +71,8 @@ EventFlow AI is a production-ready solution designed to optimize the attendee ex
 - **Mobility-First Routing**: Dedicated routing toggle to prioritize accessible paths.
 
 ### F. Testing & Reliability
+- **Security Validation Suite**: Dedicated tests for AI prompt injection and input sanitization in `tests/security.test.ts`.
+- **Performance Benchmarks**: Verified sub-millisecond routing trajectories and cache effectiveness in `tests/performance.test.ts`.
 - **Integration Tests**: Full API suite using `supertest` and `vitest` to verify endpoint reliability and security.
 - **SLO Monitoring**: System designed for 99.9% availability with target latency <150ms.
 

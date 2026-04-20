@@ -7,85 +7,126 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Helper Functions
+    // 1. Primitive Definitions & Global Helpers
     // ===============================================================
     function isSignedIn() { return request.auth != null; }
     function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
     function isOwner(userId) { return isVerified() && request.auth.uid == userId; }
+    
+    // Auth tokens NEVER contain custom claims in this environment.
+    // We strictly use the designated admin email for RBAC elevation.
     function isAdmin() { 
       return isVerified() && request.auth.token.email == "princeradadia@gmail.com"; 
     }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
     // ===============================================================
-    // Domain Rules
+    // 2. Validation Blueprints (The Anti-Update-Gap)
+    // ===============================================================
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             (!('mobilityFirst' in data) || data.mobilityFirst is bool);
+    }
+
+    function isValidQueueToken(data) {
+      return data.keys().hasAll(['userId', 'venueId', 'serviceType', 'status', 'joinedAt']) &&
+             data.userId == request.auth.uid &&
+             data.venueId is string && isValidId(data.venueId) &&
+             data.serviceType in ['concession', 'restroom', 'entry', 'exit'] &&
+             data.status in ['waiting', 'called', 'completed', 'cancelled'] &&
+             data.joinedAt is timestamp;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['userId', 'role', 'content', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.role in ['user', 'model'] &&
+             data.content is string && data.content.size() <= 2000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidAnalyticsLog(data) {
+      return data.keys().hasAll(['type', 'venueId', 'payload', 'timestamp']) &&
+             data.type is string && data.type.size() <= 64 &&
+             data.venueId is string && isValidId(data.venueId) &&
+             data.payload is map &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // 3. Domain match blocks
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && 
-                      isValidId(userId) &&
-                      incoming().uid == request.auth.uid &&
-                      incoming().email is string &&
-                      incoming().email.size() < 256 &&
-                      incoming().keys().hasAll(['uid', 'email']);
-      allow update: if isOwner(userId) && 
-                      incoming().uid == existing().uid &&
-                      (
-                        // Action: Update Profile
-                        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'mobilityFirst', 'updatedAt'])
-                      );
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // Users cannot list other users
+      
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+      
+      allow update: if isOwner(userId) && isValidId(userId) && (
+        // Action: Standard Profile Update
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'mobilityFirst', 'updatedAt']) &&
+        incoming().uid == existing().uid &&
+        isValidUser(incoming())
+      ) || isAdmin();
     }
 
     match /queues/{tokenId} {
-      function isValidTokenSchema(data) {
-        return data.keys().hasAll(['userId', 'venueId', 'serviceType', 'status', 'joinedAt']) &&
-               data.userId == request.auth.uid &&
-               data.venueId is string &&
-               data.status in ['waiting', 'cancelled'] &&
-               data.joinedAt is string;
-      }
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
 
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isVerified() && isValidId(tokenId) && isValidTokenSchema(incoming());
-      allow update: if isVerified() && 
-                      resource.data.userId == request.auth.uid && (
-                        // Action: Cancel Token
-                        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
-                        incoming().status == 'cancelled'
-                      ) || isAdmin();
+      allow create: if isVerified() && isValidId(tokenId) && 
+                      isValidQueueToken(incoming()) &&
+                      incoming().status == 'waiting' &&
+                      exists(/databases/$(database)/documents/venues/$(incoming().venueId));
+
+      allow update: if isVerified() && isValidId(tokenId) && (
+        (
+          // Action: User Cancellation
+          resource.data.userId == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+          incoming().status == 'cancelled' &&
+          incoming().updatedAt == request.time
+        ) || isAdmin()
+      );
+      
+      allow delete: if isAdmin();
     }
 
     match /venues/{venueId} {
-      allow read: if true; // Public venue telemetry for map & list
+      // 100% Read/Write isolation for static venue telemetry
+      allow read: if true; 
       allow write: if isAdmin() && isValidId(venueId);
     }
 
     match /chats/{chatId}/messages/{messageId} {
-      function isValidMessage(data) {
-        return data.keys().hasAll(['userId', 'role', 'content', 'timestamp']) &&
-               data.userId == request.auth.uid &&
-               data.content is string && 
-               data.content.size() <= 2000;
-      }
-      allow read: if isOwner(chatId) || isAdmin();
-      allow create: if isOwner(chatId) && 
+      // Identity deriviation via path segments
+      function isChatParticipant(cid) { return isVerified() && request.auth.uid == cid; }
+
+      allow get, list: if isChatParticipant(chatId) || isAdmin();
+      
+      allow create: if isChatParticipant(chatId) && 
                       isValidId(chatId) &&
                       isValidId(messageId) &&
-                      isValidMessage(incoming());
+                      isValidChatMessage(incoming());
+                      
+      allow update, delete: if isAdmin();
     }
 
     match /venue_analytics/{logId} {
-      function isValidLog(data) {
-        return data.keys().hasAll(['type', 'venueId', 'payload', 'timestamp']) &&
-               data.type is string &&
-               data.venueId is string &&
-               data.payload is map;
-      }
-      allow create: if isVerified() && isValidId(logId) && isValidLog(incoming());
-      allow read: if isAdmin();
+      allow create: if isVerified() && isValidId(logId) && isValidAnalyticsLog(incoming());
+      allow get: if isAdmin();
+      allow list: if isAdmin();
     }
   }
 }

@@ -11,19 +11,21 @@ const venueCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 /**
  * VenueService
  * 
- * Handles venue metadata, gate status, and congestion-aware routing logic.
- * Utilizes in-memory caching to minimize database latency and optimize throughput.
+ * Orchestrates the retrieval of venue metadata and the execution of the 
+ * "Dynamic Routing Engine." This service implements the multi-weighted 
+ * cost heuristic used to balance crowd flow across venue assets.
  * 
  * @category Services
+ * @heuristic Cost = (Geometric_Friction * 0.4) + (Temporal_Friction * 0.6)
  */
 export class VenueService {
   /**
-   * Fetches venue data with in-memory caching support.
+   * Retrieves venue telemetry and status data.
+   * Implements a 60-second TTL in-memory cache to mitigate Firestore read pressure.
    * 
-   * @param venueId - The unique ID of the venue to retrieve.
-   * @returns A Promise resolving to the venue metadata and gate status.
-   * @example
-   * const venue = await VenueService.getVenueData('stadium_01');
+   * @param venueId - Unique identifier for the stadium/arena asset.
+   * @returns {Promise<VenueData>} Metadata and current gate operational states.
+   * @throws APIError if telemetry ingestion fails.
    */
   public static async getVenueData(venueId: string): Promise<VenueData> {
     const cachedData = venueCache.get<VenueData>(venueId);
@@ -53,7 +55,7 @@ export class VenueService {
                            err.code === 7;
       
       if (!isAccessError) {
-        console.error('[VenueService] Firestore Retrieval Error:', err.message || err);
+        console.error('[VenueService] Firestore Telemetry Ingestion Failure:', err.message || err);
       }
     }
 
@@ -61,17 +63,15 @@ export class VenueService {
   }
 
   /**
-   * Optimized routing algorithm to find the optimal ingress/egress trajectory.
-   * Utilizes a weighted cost heuristic:
-   * Cost = (Distance × 0.4) + (Congestion × 0.6)
+   * Optimized ingress/egress trajectory calculation.
    * 
-   * This ensures high-throughput load balancing across venue assets while 
-   * maintaining user efficiency.
+   * Iterates through available mobility-filtered gates and ranks them based on 
+   * a linear weighted sum of distance (geometric friction) and congestion (temporal friction).
    * 
-   * @param userLocation - Geographic coordinates of the user.
-   * @param mobilityFirst - If enabled, filters strictly for barrier-free paths (ADA).
-   * @param venueId - Target facility identifier.
-   * @returns A Promise resolving to a ranked list of gates by calculated cost-score.
+   * @param userLocation - Current GPS coordinates of the attendee.
+   * @param mobilityFirst - Boolean flag to activate strict ADA/mobility-only pathing.
+   * @param venueId - Target facility scope.
+   * @returns {Promise<Gate[]>} A prioritized list of optimal entry/exit gates.
    */
   public static async calculateBestRoute(
     userLocation: { lat: number, lng: number }, 
@@ -80,30 +80,29 @@ export class VenueService {
   ): Promise<Gate[]> {
     const venue = await this.getVenueData(venueId);
     
-    // Strict adherence to accessibility mandates (WCAG/ADA)
+    // Accessibility Guard (WCAG 2.1 & ADA Compliance)
     const availableGates = mobilityFirst 
       ? venue.gates.filter(g => g.isAccessible) 
       : venue.gates;
 
     const scoredGates = availableGates.map(gate => {
-      // Euclidean relative distance for low-latency scoring
+      // Euclidean proximity calculation for sub-millisecond response latency
       const distance = Math.sqrt(
         Math.pow(gate.lat - userLocation.lat, 2) + 
         Math.pow(gate.lng - userLocation.lng, 2)
       );
       
       /**
-       * COST CALCULATION ENGINE
-       * Distance represents geometric friction.
-       * Congestion represents temporal friction.
-       * We weigh congestion higher (60%) to prevent stadium bottleneck points.
+       * HEURISTIC SCORING ENGINE
+       * We assign a 60% weight to congestion (Temporal Friction) to maximize 
+       * throughput and prevent bottleneck formation at the nearest gate.
        */
       const score = (distance * 1000 * 0.4) + (gate.congestion * 100 * 0.6);
       
       return { ...gate, score };
     });
 
-    // Lowest cost-score represents the peak operational efficiency path
+    // Lowest score correlates to the peak operational efficiency path
     return scoredGates.sort((a, b) => (a.score || 0) - (b.score || 0));
   }
 
